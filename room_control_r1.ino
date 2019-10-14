@@ -33,12 +33,13 @@ TM1637 disp(CLK,DIO);
 #define LED2 6
 #define LED3 5
 #define LED4 4
+#define POINT_DIV 2
 LED led(LED1,LED2,LED3,LED4);
 
 int angle; //on angle, off 20 minute
 unsigned long old_tick;
 int relay_sts = 0;
-int max_temp = 30;
+int max_temp = 28 * POINT_DIV + 1; //28.5 Degree
 
 #define KEY1_PIN 9//
 #define KEY2_PIN 8//
@@ -96,7 +97,7 @@ void loop()
       {
         max_temp--;
       }
-      max_temp = min(32, max(27, max_temp));  
+      max_temp = min(32 * POINT_DIV, max(22 * POINT_DIV, max_temp));  
     }
     displayTemperature(max_temp, angle);
     while(key.get());
@@ -106,7 +107,7 @@ void loop()
   if (sec > old_sec){
     if (this_tick > key_tick){
       led.off(1);
-      displayTemperature((int8_t)celsius, angle);//
+      displayTemperature((int8_t)(celsius * POINT_DIV), angle);//
     }
     Serial.print("status : ");
     Serial.print(relay_sts);
@@ -122,7 +123,7 @@ void loop()
         relay_off();
       }
     }
-    if ((int8_t)celsius >= max_temp){
+    if ((int8_t)(celsius * POINT_DIV) >= max_temp){
       if (limit_loop > 10){
         led.on(4);
         limit_loop = 0;
@@ -143,11 +144,24 @@ void loop()
 
 void displayTemperature(int8_t temperature, int angle)
 {
+#if POINT_DIV == 1  
   int8_t temp[4];
   temp[2] = angle / 10;  
   temp[3] = angle % 10;  
   temp[0] = temperature / 10;
   temp[1] = temperature % 10;
+  disp.display(temp);
+#else
+  double temp;
+  int point = 0;
+  temp = 1.0 * angle;
+  if (temperature & 1)
+    point = 1;
+  temperature /= 2;
+  temp += 100.0 * temperature;  
+  if (point)
+    temp /= 100.0;
+#endif
   disp.display(temp);
 }
 /*********************************************************************************************************
